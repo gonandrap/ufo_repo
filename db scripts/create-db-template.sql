@@ -20,7 +20,6 @@ create table ufo_description (
     obs_detailed_description varchar(1000)
 );
 
--- TODO : make obs_shape an enumerated
 CREATE TYPE shape AS ENUM ('Oval', 'Triangle', 'Light', 'Dark', 'Orb', 'Fireball', 'Circle', 'Changing', 'Disk', 'Cylinder', 'Rectangle', 'Unknown', 'Changing', 'Egg', 'cube', 'Sphere', 'Formation', 'Chevron', 'Flash', 'Disk', 'Star', 'Other', 'Cone');
 
 create table ufo_observation (
