@@ -9,7 +9,12 @@ import os
 import logging
 import boto3
 import botocore
-import requests
+import csv
+import threading
+import random
+import string
+from scrapy import signals
+import os
 
 
 class COLUMN(Enum):
@@ -30,19 +35,81 @@ class ObservationsSpider(scrapy.Spider):
         :param url: the url to start scrapping
         :param date_from: date to start looking for observations. 
         :param bucket_name: name of the S3 bucket to upload csv generated files
+        :param table_name: name of the dynamo table to write results of the run
     """
     name = 'observations'
     timeout = 3
 
-    def __init__(self, url, date_from, bucket_name, *args, **kwargs):
+    csvfilename = None
+    csvfile = None
+    item_writer = None
+
+    csv_writer_lock = None
+    persisted_items = None
+
+    aws_session = None
+
+    def __init__(self, url, date_from, bucket_name, table_name, *args, **kwargs):
         super(ObservationsSpider, self).__init__(*args, **kwargs) 
+        self.run_id = ''.join(random.choices(string.ascii_lowercase, k=20))
         self.url = url 
         self.date_from = datetime.strptime(date_from, '%m/%d/%Y') 
         self.bucket_name = bucket_name
+        self.table_name = table_name
+
+        self.__init_logger()
+        self.__init_csv_writer()
+
+        self.aws_session = boto3.Session(profile_name='coding_challenge_local')
+
+    def __init_signals(self):
+        self.errors = []
+        crawler.signals.connect(self.__item_error, signal=signals.item_error)
+        crawler.signals.connect(self.__spider_error, signal=signals.spider_error)
+
+    def __item_error(self, item, response, spider, failure):
+        self.errors.append(failure)
+
+    def __spider_error(self, failure, response, spider):
+        self.errors.append(failure)
+
+    def __init_logger(self):
+        self.spider_logger = logging.getLogger(f'scraper_app] [RUN_ID={self.run_id}')
+
+    def __init_csv_writer(self):
+        self.csv_writer_lock = threading.Lock()
+        columns=['obs_id','obs_posted','obs_city','obs_state','obs_country','obs_shape','obs_duration','obs_images','obs_ocurred','obs_reported','obs_summary','obs_detailed_description']
+        
+        self.csvfilename = os.path.join(tempfile.gettempdir(), datetime.strftime(datetime.now(), "%m_%d_%y__%H_%M_%S") + '.csv')
+
+        self.persisted_items = 0
+        
+        with self.csv_writer_lock:
+            self.csvfile = open(self.csvfilename, 'a+', newline='')
+            self.item_writer = csv.DictWriter(self.csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL, fieldnames=columns)
+            self.item_writer.writeheader()
+            self.csvfile.flush()
+
+            self.spider_logger.info(f'CSV temporary file created [{self.csvfilename}]')
+
+    def __cleanup_csv_writer(self):
+        """
+            Not thread safe, must be called from inside a critical section
+        """
+        self.csvfilename = None
+        self.csvfile = None
+        self.item_writer = None
+        
 
     def start_requests(self):
-        logging.info(f'Scrapping [{self.url}]')
+        self.spider_logger.info(f'Scrapping [{self.url}]')
         yield scrapy.Request(url=self.url, callback=self.download_data)
+
+    def closed(self, reason):
+        self.spider_logger.info(f'Spider [{self.name}] is closing due to reason [{reason}]. [{self.persisted_items}] Items scraped and persisted. Upload generated csv file')
+        filename = os.path.basename(self.csvfilename)
+        result = self.__upload_file(filename)
+        #FIXME self.__log_run_result(filename, result and reason == 'finished', self.persisted_items, self.persisted_items)
 
 
     def download_data(self, response):
@@ -53,9 +120,9 @@ class ObservationsSpider(scrapy.Spider):
             date = datetime.strptime(reports.xpath('./a/text()').extract_first(), '%m/%Y')
             date_after_month = date + relativedelta(months=1) # this is because the page counts by end of month, but python assumes first day of month
             if date_after_month >= self.date_from:
-                logging.info(f'Found observations for date [{date}]')
+                self.spider_logger.info(f'Found observations for date [{date}]')
                 follow_url = response.urljoin(reports.xpath('./a/@href').extract_first())
-                logging.debug(f'Following url [{follow_url}]')
+                self.spider_logger.debug(f'Following url [{follow_url}]')
                 yield response.follow(url=follow_url, meta={'observations_date':date_after_month}, callback=self.parse_observations_per_date)
             else:
                 # reports are cronologically ordered, we can safely stop iterating and we won't miss any DataFrame
@@ -64,11 +131,10 @@ class ObservationsSpider(scrapy.Spider):
         # FIXME : the problem with processing in parallel is that if there is an error, there could be gaps in the dates
 
     def parse_observations_per_date(self, response):
-        df = pd.DataFrame(columns=['obs_id','obs_posted','obs_city','obs_state','obs_country','obs_shape','obs_duration','obs_images','obs_ocurred','obs_reported','obs_summary','obs_detailed_description'])
-        df_row = {}
-
         rows = response.xpath('//tbody//tr')
         for row in rows:        # iterate over the observations for the given date (parameter 'observations_date')
+            df_row = {}
+
             # Once I have each row splited in an array, I can re-split again based on columns
             columns = row.xpath('./td')
             df_row['obs_id'] = columns[COLUMN.ID.value].xpath('./a/text()').extract_first()
@@ -82,57 +148,86 @@ class ObservationsSpider(scrapy.Spider):
             df_row['obs_summary'] = columns[COLUMN.SUMMARY.value].xpath('./text()').extract_first()
             
             follow_url = response.urljoin(columns[COLUMN.ID.value].xpath('./a/@href').extract_first())
-            logging.debug(f'Following url [{follow_url}] to grab observation details')
-            #response = requests.get(follow_url, timeout=self.timeout)
-            #self.__parse_observation_detail(scrapy.Selector(response=response), df_row)
+            self.spider_logger.debug(f'Following url [{follow_url}] to grab observation details')
             yield response.follow(url=follow_url, meta={'df_row':df_row}, callback=self.__parse_observation_detail)
-
-            logging.debug(f'Adding new entry to csv [id={df_row["obs_id"]}]')
-            df_to_concat = pd.DataFrame(df_row, index=[df_row['obs_id']])
-            df = pd.concat([df, df_to_concat])
-
-        # Dump all observations to a csv file in a temp location
-        filename = response.meta['observations_date'].strftime('%m_%d_%Y') + '.csv'
-        csv_location_path = os.path.join(tempfile.gettempdir(), filename)
-        logging.info(f'Dumping csv file to location [{csv_location_path}]')
-        df.to_csv(csv_location_path)
-
-        # Upload csv to final storage (which will trigger the DB import event)
-        if self.__upload_file(csv_location_path):
-            pass    # write result to dynamo
-
-        # Remove temp file
-        os.remove(csv_location_path)
 
 
     def __parse_observation_detail(self, response):      
+        row = response.meta['df_row']
+        
         # From the first row, grab the ocurred and reported times
         ocurred_str = response.xpath('//tbody/tr/td')[0].xpath('./font/text()')[0].extract()
         chopped_ocurred_str = ocurred_str[:ocurred_str.find('  (')]
-        response.meta['df_row']['obs_ocurred'] = datetime.strptime(chopped_ocurred_str, 'Occurred : %m/%d/%Y %H:%M')
+        row['obs_ocurred'] = datetime.strptime(chopped_ocurred_str, 'Occurred : %m/%d/%Y %H:%M')
         reported_str = response.xpath('//tbody/tr/td')[0].xpath('./font/text()')[1].extract()
         chopped_reported_str = reported_str[:-6]
-        response.meta['df_row']['obs_reported'] = datetime.strptime(chopped_reported_str, 'Reported: %m/%d/%Y %I:%M:%S %p')
+        row['obs_reported'] = datetime.strptime(chopped_reported_str, 'Reported: %m/%d/%Y %I:%M:%S %p')
 
         # For the second row, grab the detailed description
-        response.meta['df_row']['obs_detailed_description'] = response.xpath('//tbody/tr/td')[1].xpath('./font/text()')[-1].extract()
+        row['obs_detailed_description'] = response.xpath('//tbody/tr/td')[1].xpath('./font/text()')[-1].extract()
+
+        self.__persist_item(row)
 
     
-    def __upload_file(self, file_location):
-        result = True
-        filename = os.path.basename(file_location)
-        
-        try:
-            session = boto3.Session(profile_name='coding_challenge')
-            s3_client = session.client('s3')
+    def __persist_item(self, row):
+        # Have all I need to persist the item in disk
+        with self.csv_writer_lock:
+            self.spider_logger.debug(f'Adding new entry [id={row["obs_id"]}] to csv [{self.csvfilename}]')
+            self.item_writer.writerow(row)
+            self.csvfile.flush()
 
-            logging.info(f'Uploading file [{file_location}] to bucket [{self.bucket_name}] with object name [{filename}]')
-            response = s3_client.upload_file(file_location, self.bucket_name, filename)      # files will be of small size, no need to to keep track of upload progress
+            self.persisted_items += 1
+
+
+    def __upload_file(self, filename):        
+        try:
+            s3_client = self.aws_session.client('s3')
+
+            self.spider_logger.info(f'Uploading file [{self.csvfilename}] to bucket [{self.bucket_name}] with object name [{filename}]')
+            with self.csv_writer_lock:
+                response = s3_client.upload_file(self.csvfilename, self.bucket_name, filename)      # files will be of small size, no need to to keep track of upload progress
+
+                # Finally, remove generated csv file
+                self.csvfile.close()
+                os.remove(self.csvfilename)
+                self.__cleanup_csv_writer()
+
+            return True
         except botocore.exceptions.ClientError as e:
-            logging.error(f'Trying to create a boto client. Description [{e}]')
-            result = False
+            self.spider_logger.error(f'Trying to create a boto client for S3. Description [{e}]')
         except boto3.exceptions.S3UploadFailedError as e:
-            logging.error(f'Trying to upload file [{file_location} to bucket [{self.bucket_name}]. Description [{e}]')
-            result = False
-        
-        return result
+            self.spider_logger.error(f'Trying to upload file [{self.csvfilename} to bucket [{self.bucket_name}]. Description [{e}].')
+        except Exception as e:
+            self.spider_logger.error(f'Trying to upload and clean up files. Description [{e}]')
+
+        return False
+
+    def __log_run_result(self, filename, result, recordsPersisted, recordsExpected):
+        """
+            Not thread safe.
+        """ 
+        try:
+            region_name = self.aws_session.region_name
+            dynamodb = boto3.resource('dynamodb', region_name=region_name)
+            table = dynamodb.Table(self.table_name)
+
+            object_url = f'https://{self.bucket_name}.s3.{region_name}.amazonaws/{filename}'
+            response = table.put_item(
+                Item={
+                    'run_id': self.run_id,
+                    'input_url': self.url,
+                    'input_date_from': datetime.strftime(self.date_from, '%m/%d/%Y'),
+                    'input_bucket_name': self.bucket_name,
+                    'result': result,
+                    'number_records_persisted': recordsPersisted,
+                    'number_records_expected': recordsExpected,
+                    'file_location': object_url
+                }
+            )
+
+
+            return True
+        except botocore.exceptions.ClientError as e:
+            self.spider_logger.error(f'Trying to create a boto client for DynamoDB. Description [{e}]')
+
+        return False

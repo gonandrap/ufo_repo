@@ -13,12 +13,16 @@
             "args": [
                 "crawl",
                 "observations",
+                "--loglevel",
+                "DEBUG",
                 "-a",
                 "url=https://nuforc.org/webreports/ndxevent.html",
                 "-a",
                 "date_from=05/19/2023",
                 "-a",
-                "bucket_name=codingchallengeimportfiles"
+                "bucket_name=codingchallengeimportfiles",
+                "-a",
+                "table_name=scrap_run"
             ],
             "console": "integratedTerminal",
         }
