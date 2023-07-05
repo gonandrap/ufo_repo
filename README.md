@@ -19,3 +19,22 @@ The downside of this design decision is a coupling between app & data layer.
     * all the entries with an approximated event date (name "*UNSPECIFIED / APPROXIMATE*") will be discarded.
 * 
 
+# Setup dev env
+You need to install *conda* environment manager with python 3.9 installed on it. To replicate the env just execute:
+```
+conda create --name <env_name> --file requirements.txt
+```
+Once created, make sure to activate it:
+```
+conda activate <env_name>
+```
+
+# Web scraper manual run
+From *scrapper* folder execute:
+```
+scrapy crawl observations --loglevel INFO -a url=https://nuforc.org/webreports/ndxevent.html -a date_from=05/19/2023 -a bucket_name=codingchallengeimportfiles -a table_name=scrap_run
+```
+Alternatively, it can be run by just executing next command (being positioned on folder <workspace_folder>/scrapper):
+```
+python run_crawler.py
+```

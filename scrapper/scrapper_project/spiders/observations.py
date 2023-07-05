@@ -108,7 +108,7 @@ class ObservationsSpider(scrapy.Spider):
         yield scrapy.Request(url=self.url, callback=self.download_data)
 
     def closed(self, reason):
-        self.spider_logger.info(f'Spider [{self.name}] is closing due to reason [{reason}]. [{self.persisted_items}] Items scraped and persisted. Upload generated csv file')
+        self.spider_logger.info(f'Spider [{self.name}] is closing due to reason [{reason}]. [{self.persisted_items}] Items scraped and persisted')
         filename = os.path.basename(self.csvfilename)
         upload_result = self.__upload_file(filename)
         self.__log_run_result(filename, self.__run_result(upload_result, reason))
