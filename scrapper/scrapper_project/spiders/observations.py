@@ -46,6 +46,7 @@ class ObservationsSpider(scrapy.Spider):
 
     csv_writer_lock = None
     persisted_items = None
+    expected_items = None
 
     aws_session = None
 
@@ -60,7 +61,7 @@ class ObservationsSpider(scrapy.Spider):
         self.__init_logger()
         self.__init_csv_writer()
 
-        self.aws_session = boto3.Session(profile_name='coding_challenge_local')
+        self.aws_session = boto3.Session(profile_name='coding_challenge_api_access')
 
     def __init_signals(self):
         self.errors = []
@@ -83,6 +84,7 @@ class ObservationsSpider(scrapy.Spider):
         self.csvfilename = os.path.join(tempfile.gettempdir(), datetime.strftime(datetime.now(), "%m_%d_%y__%H_%M_%S") + '.csv')
 
         self.persisted_items = 0
+        self.expected_items = 0
         
         with self.csv_writer_lock:
             self.csvfile = open(self.csvfilename, 'a+', newline='')
@@ -108,20 +110,29 @@ class ObservationsSpider(scrapy.Spider):
     def closed(self, reason):
         self.spider_logger.info(f'Spider [{self.name}] is closing due to reason [{reason}]. [{self.persisted_items}] Items scraped and persisted. Upload generated csv file')
         filename = os.path.basename(self.csvfilename)
-        result = self.__upload_file(filename)
-        #FIXME self.__log_run_result(filename, result and reason == 'finished', self.persisted_items, self.persisted_items)
+        upload_result = self.__upload_file(filename)
+        self.__log_run_result(filename, self.__run_result(upload_result, reason))
 
+    def __run_result(self, upload_result, finished_reason):
+        return (self.persisted_items == self.expected_items) and (upload_result == True) and (finished_reason == 'finished')
 
     def download_data(self, response):
         rows = response.xpath('//tbody//tr')
         
         for row in rows:
-            reports = row.xpath('./td')[0]
-            date = datetime.strptime(reports.xpath('./a/text()').extract_first(), '%m/%Y')
+            columns = row.xpath('./td')
+            date = datetime.strptime(columns[0].xpath('./a/text()').extract_first(), '%m/%Y')
             date_after_month = date + relativedelta(months=1) # this is because the page counts by end of month, but python assumes first day of month
             if date_after_month >= self.date_from:
-                self.spider_logger.info(f'Found observations for date [{date}]')
-                follow_url = response.urljoin(reports.xpath('./a/@href').extract_first())
+                try:
+                    number_items = int(columns[1].xpath('./text()').extract_first())
+                except ValueError as e:
+                    self.spider_logger.error(f'Trying to read number of expected items for date [{date_after_month}]. Description [{e}]')
+                    number_items = 0
+
+                self.spider_logger.info(f'Found [{number_items}] observations for date [{date}]')
+                self.expected_items += number_items
+                follow_url = response.urljoin(columns[0].xpath('./a/@href').extract_first())
                 self.spider_logger.debug(f'Following url [{follow_url}]')
                 yield response.follow(url=follow_url, meta={'observations_date':date_after_month}, callback=self.parse_observations_per_date)
             else:
@@ -202,25 +213,24 @@ class ObservationsSpider(scrapy.Spider):
 
         return False
 
-    def __log_run_result(self, filename, result, recordsPersisted, recordsExpected):
+    def __log_run_result(self, filename, result):
         """
             Not thread safe.
         """ 
         try:
-            region_name = self.aws_session.region_name
-            dynamodb = boto3.resource('dynamodb', region_name=region_name)
+            dynamodb = self.aws_session.resource('dynamodb')
             table = dynamodb.Table(self.table_name)
 
-            object_url = f'https://{self.bucket_name}.s3.{region_name}.amazonaws/{filename}'
+            object_url = f'https://s3.console.aws.amazon.com/s3/object/{self.bucket_name}?region={self.aws_session.region_name}&prefix={filename}'
             response = table.put_item(
                 Item={
                     'run_id': self.run_id,
                     'input_url': self.url,
                     'input_date_from': datetime.strftime(self.date_from, '%m/%d/%Y'),
                     'input_bucket_name': self.bucket_name,
-                    'result': result,
-                    'number_records_persisted': recordsPersisted,
-                    'number_records_expected': recordsExpected,
+                    'result': 'SUCCESS' if result else 'FAIL',
+                    'number_records_persisted': self.persisted_items,
+                    'number_records_expected': self.expected_items,
                     'file_location': object_url
                 }
             )
