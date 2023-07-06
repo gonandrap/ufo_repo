@@ -38,3 +38,10 @@ Alternatively, it can be run by just executing next command (being positioned on
 ```
 python run_crawler.py
 ```
+
+
+# Links
+* Run scrapy in a container : [link](https://shinesolutions.com/2018/09/13/running-a-web-crawler-in-a-docker-container/)
+* Run python and DB in a container using compose [link](https://stefanopassador.medium.com/docker-compose-with-python-and-posgresql-45c4c5174299)
+    * Another one for DB only [link](https://www.docker.com/blog/how-to-use-the-postgres-docker-official-image/)
+* Run a cronjob inside docker [link](https://devtron.ai/blog/running-a-cronjob-inside-docker-container-in-5-steps/)
