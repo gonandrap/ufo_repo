@@ -1,3 +1,6 @@
 boto3==1.26.165
 pandas==2.0.3
+pip-chill==1.0.3
 scrapy==2.9.0
+sqlalchemy==2.0.18
+psycopg2==2.9.6

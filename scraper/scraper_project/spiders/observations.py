@@ -15,6 +15,7 @@ import random
 import string
 from scrapy import signals
 import os
+from importer import DBImporter
 
 
 class COLUMN(Enum):
@@ -95,12 +96,13 @@ class ObservationsSpider(scrapy.Spider):
             self.spider_logger.info(f'CSV temporary file created [{self.csvfilename}]')
 
     def __cleanup_csv_writer(self):
-        """
-            Not thread safe, must be called from inside a critical section
-        """
-        self.csvfilename = None
-        self.csvfile = None
-        self.item_writer = None
+        with self.csv_writer_lock:
+            self.csvfile.close()
+            os.remove(self.csvfilename)
+
+            self.csvfilename = None
+            self.csvfile = None
+            self.item_writer = None
         
 
     def start_requests(self):
@@ -112,6 +114,13 @@ class ObservationsSpider(scrapy.Spider):
         filename = os.path.basename(self.csvfilename)
         upload_result = self.__upload_file(filename)
         self.__log_run_result(filename, self.__run_result(upload_result, reason))
+
+        # import generated CSV file into database
+        importer = DBImporter()
+        importer.run(self.csvfilename)
+
+        # Finally, remove generated csv file
+        self.__cleanup_csv_writer()
 
     def __run_result(self, upload_result, finished_reason):
         return (self.persisted_items == self.expected_items) and (upload_result == True) and (finished_reason == 'finished')
@@ -197,11 +206,6 @@ class ObservationsSpider(scrapy.Spider):
             self.spider_logger.info(f'Uploading file [{self.csvfilename}] to bucket [{self.bucket_name}] with object name [{filename}]')
             with self.csv_writer_lock:
                 response = s3_client.upload_file(self.csvfilename, self.bucket_name, filename)      # files will be of small size, no need to to keep track of upload progress
-
-                # Finally, remove generated csv file
-                self.csvfile.close()
-                os.remove(self.csvfilename)
-                self.__cleanup_csv_writer()
 
             return True
         except botocore.exceptions.ClientError as e:
