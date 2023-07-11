@@ -1,6 +1,6 @@
 import csv
 import pandas as pd
-from .db import UFODatabase, DBConnectionException
+from database.connection import UFODatabase, DBConnectionException
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from psycopg2.errors import UniqueViolation

@@ -15,7 +15,8 @@
 				"DB_PORT":"5432",
                 "DB_USER":"coding",
                 "DB_PASSWORD":"coding",
-                "DB_NAME":"ufo"
+                "DB_NAME":"ufo",
+                "PYTHONPATH":"../"
 			},
             "args": [
                 "crawl",

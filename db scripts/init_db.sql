@@ -14,8 +14,8 @@ create table if not EXISTS ufo_observation (
 
 create table if not EXISTS ufo_description (
     obs_id VARCHAR(32) not null,
-    obs_ocurred TIME,
-    obs_reported TIME,
+    obs_ocurred TIMESTAMP,
+    obs_reported TIMESTAMP,
     obs_summary TEXT,
     obs_detailed_description TEXT,
     PRIMARY KEY (obs_id),

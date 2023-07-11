@@ -1,4 +1,4 @@
 from . import importer
-from . import db
+from database import connection
 
-__all__ = ['importer', 'db']
+__all__ = ['importer']
