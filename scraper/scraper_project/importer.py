@@ -1,6 +1,6 @@
 import csv
 import pandas as pd
-from db.connection import UFODatabase, DBConnectionException
+from .db import UFODatabase, DBConnectionException
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from psycopg2.errors import UniqueViolation
@@ -15,8 +15,8 @@ class DBImporter:
         self.db = UFODatabase()
         self.logger = logging.getLogger('db_importer')
 
-    def run(self, filename):
-        df = pd.read_csv(filename, index_col='obs_id')
+    def run(self, filename, index_col):
+        df = pd.read_csv(filename, index_col=index_col, encoding='cp1252')
         df_ufo_observation = df.iloc[:, 0:7]
         df_ufo_description = df.iloc[:, 7:]
 

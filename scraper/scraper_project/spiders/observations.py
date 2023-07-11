@@ -15,7 +15,7 @@ import random
 import string
 from scrapy import signals
 import os
-from importer import DBImporter
+from scraper_project.importer import DBImporter
 
 
 class COLUMN(Enum):
@@ -112,12 +112,14 @@ class ObservationsSpider(scrapy.Spider):
     def closed(self, reason):
         self.spider_logger.info(f'Spider [{self.name}] is closing due to reason [{reason}]. [{self.persisted_items}] Items scraped and persisted')
         filename = os.path.basename(self.csvfilename)
-        upload_result = self.__upload_file(filename)
-        self.__log_run_result(filename, self.__run_result(upload_result, reason))
+        
+        # Not uploading to AWS for the moment
+        #upload_result = self.__upload_file(filename)
+        #self.__log_run_result(filename, self.__run_result(upload_result, reason))
 
         # import generated CSV file into database
         importer = DBImporter()
-        importer.run(self.csvfilename)
+        importer.run(self.csvfilename, index_col='obs_id')
 
         # Finally, remove generated csv file
         self.__cleanup_csv_writer()

@@ -9,7 +9,14 @@
             "type": "python",
             "request": "launch",
             "module": "scrapy",
-            "cwd": "${workspaceFolder}\\scrapper",
+            "cwd": "${workspaceFolder}\\scraper",
+            "env":{
+				"DB_HOSTNAME":"localhost",
+				"DB_PORT":"5432",
+                "DB_USER":"coding",
+                "DB_PASSWORD":"coding",
+                "DB_NAME":"ufo"
+			},
             "args": [
                 "crawl",
                 "observations",
