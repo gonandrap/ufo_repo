@@ -33,6 +33,22 @@
                 "table_name=scrap_run"
             ],
             "console": "integratedTerminal",
+        },
+        {
+        "name": "Python: Web Server",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}\\web_app\\main.py",
+            "cwd": "${workspaceFolder}\\web_app",
+            "env":{
+				"DB_HOSTNAME":"localhost",
+				"DB_PORT":"5432",
+                "DB_USER":"coding",
+                "DB_PASSWORD":"coding",
+                "DB_NAME":"ufo",
+                "PYTHONPATH":"../"
+			},
+            "console": "integratedTerminal",
         }
     ]
 }

@@ -1,5 +1,5 @@
 import logging
-from connection import UFODatabase
+from .connection import UFODatabase
 from datetime import datetime, date, timedelta
 from sqlalchemy import select
 
@@ -21,12 +21,14 @@ class DBSearch:
     def search_by_date_range(self, date_from : date, date_to : date) -> list:
         ufo_obs_table = self.db.get_table('ufo_observation')
         ufo_desc_table = self.db.get_table('ufo_description')
-        stmt = select(ufo_obs_table, ufo_desc_table).where(
+        select_stmt = select(ufo_obs_table, ufo_desc_table).reduce_columns()            # reduce FK columns (obs_id)
+        stmt = select_stmt.where(
                 ufo_desc_table.c.obs_ocurred >= date_from,
                 ufo_desc_table.c.obs_ocurred <= date_to,
                 ufo_obs_table.c.obs_id == ufo_desc_table.c.obs_id
                 ).order_by(ufo_desc_table.c.obs_ocurred)
-        return self.__execute_query(stmt)
+        result = self.__execute_query(stmt)
+        return self.__aggregate_column_names(select_stmt, stmt, result)
 
 
     def search_by_location(self, location : str):
@@ -47,7 +49,6 @@ class DBSearch:
         return self.__execute_query(stmt)
 
 
-
     def __execute_query(self, stmt):
         try:
             with self.db.get_connection() as connection:
@@ -65,6 +66,9 @@ class DBSearch:
         to_datetime = from_datetime + timedelta(days=1)
         return (from_datetime, to_datetime)
 
+    def __aggregate_column_names(self, select_stmt, stmt, result_list):
+        column_names = list(map(lambda x: x['name'], stmt.reduce_columns().column_descriptions))
+        return list(map(lambda x: dict(zip(column_names, x)), result_list))
 
 # ----- TESTING ----- 
 def set_env_variables():
@@ -87,8 +91,10 @@ def test_search_by_date_range():
     db_search = DBSearch()
 
     date_from = datetime.strptime('07/01/2023', '%m/%d/%Y')
+
     date_to = datetime.strptime('07/31/2023', '%m/%d/%Y')
-    print_results(db_search.search_by_date_range(date_from, date_to))
+    result = db_search.search_by_date_range(date_from, date_to)
+    print_results(result)
 
 def test_search_by_date():
     from datetime import datetime

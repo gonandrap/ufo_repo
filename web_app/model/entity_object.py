@@ -1,20 +1,28 @@
 
-from pydantic import BaseModel
-from datetime import date
+from pydantic import BaseModel, create_model, ConfigDict
+from datetime import date, datetime
+from typing import List, Union
 
 class UfoObservation(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     # fields from the observation
     obs_id : str
     obs_posted : date
-    obs_city : str
-    obs_state : str
-    obs_country : str
-    obs_shape : str
-    obs_duration : str
+    obs_city : Union[str, None]
+    obs_state : Union[str, None]
+    obs_country : Union[str, None]
+    obs_shape : Union[str, None]
+    obs_duration : Union[str, None]
     obs_images : bool
 
     # fields from the details of the observation
-    obs_ocurred : date
-    obs_reporetd : date
-    obs_summary : str
-    obs_detailed_description : str
+    obs_ocurred : datetime
+    obs_reported : datetime
+    obs_summary : Union[str, None]
+    obs_detailed_description : Union[str, None]
+
+class UfoObservationList(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    observations : List[UfoObservation]
