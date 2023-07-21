@@ -4,7 +4,7 @@ Repo used for the UFO coding challenge
 
 # Environment
 ```
-conda create --name ufo python=3.9
+conda create --name <env_name> python=3.9
 pip install -r requirements.txt
 ```
 
@@ -19,14 +19,6 @@ The downside of this design decision is a coupling between app & data layer.
     * all the entries with an approximated event date (name "*UNSPECIFIED / APPROXIMATE*") will be discarded.
 * 
 
-# Setup dev env
-You need to install *conda* environment manager with python 3.9 installed on it. To replicate the env just execute:
-```
-conda create --name <env_name> --file requirements.txt
-```
-Once created, make sure to activate it:
-```
-conda activate <env_name>
 ```
 
 # Web scraper manual run
