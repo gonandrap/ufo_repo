@@ -21,7 +21,7 @@ class SearchCriteria:
         elif item.type == search_types[SearchAll.__name__]:
             return SearchAllCriteria(item)
         else:
-            self.logger.error(f'Unrecognized item type [{item.type}], defaulting to SearchAll')
+            logging.getLogger('search_criteria').error(f'Unrecognized item type [{item.type}], defaulting to SearchAll')
             return SearchAllCriteria(item)
 
     def search(self, search_engine):

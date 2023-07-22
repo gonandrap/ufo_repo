@@ -13,6 +13,13 @@
     <LaunchProvider>Standard Python launcher</LaunchProvider>
     <InterpreterId>CondaEnv|CondaEnv|ufo_project</InterpreterId>
     <IsWindowsApplication>False</IsWindowsApplication>
+    <SuppressEnvironmentCreationPrompt>True</SuppressEnvironmentCreationPrompt>
+    <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
+    <Environment>DB_USER=coding
+DB_PASSWORD=coding
+DB_HOSTNAME=localhost
+DB_PORT=50000
+DB_NAME=ufo</Environment>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
   <PropertyGroup Condition="'$(Configuration)' == 'Release'" />

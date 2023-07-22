@@ -39,8 +39,9 @@ python run_crawler.py
     docker build -t postgres_db_image .
 ```
 ### Run image
+Don't forget to do the port mapping (```-p``` option) to have the external container port being forwared to the one internal where the server is listening
 ```
-    docker run --name postgres_db_container -d postgres_db_image
+    docker run --name postgres_db_container -p 50000:5432 -d postgres_db_image
 ```
 ### Confirm DB is running
 ```
@@ -48,7 +49,21 @@ python run_crawler.py
     psql postgres://coding:coding@localhost:5432/ufo
     \dt
 ```
+## WebApp
+### Create image
+```
+    cd <root_directory>
+    docker build -t web_app_image -f web_app/Dockerfile .
+```
+Note that I'm using as build context the root directory of the repo (referred by ```.```). The reason for that is that ```docker build``` only accept manipulate files and directories within the build context, so in 
+order to be able to access the **database** directory, I need to set the context to a parent level that can access both, the **database** and the **web_app** dirs.
 
+### Run image
+```
+    docker run --name web_app_container -p 8001:8000 -d web_app_image
+```
+TODO : there is a problem! it is failing to connect to the database because I'm passing **localhost** as server, which is correct for the host machine but not when running dockerized! Need
+to figure out how to obtain the address of the DB server programatically I guess (this all will be resolved when using k8s)
 
 
 # Links
