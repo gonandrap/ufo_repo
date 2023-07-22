@@ -1,0 +1,47 @@
+version: "3.8"
+services:
+  web_app :
+    environment:
+      - PORT=8000
+      - HOSTNAME=web_app
+      - PYTHONPATH=/usr/src/app
+      - DB_USER=coding
+      - DB_PASSWORD=coding
+      - DB_HOSTNAME=db_service
+      - DB_PORT=5432
+      - DB_NAME=ufo
+    build: 
+        context: .
+        dockerfile: ./web_app/Dockerfile
+    container_name: web_app_container
+    expose:
+      - 8000
+    ports:
+      - "8001:8000"
+    depends_on:
+      db_service:
+        condition: service_healthy
+        restart: true
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 5
+        window: 120s
+  db_service:
+    environment:
+      - POSTGRES_USER=coding  
+      - POSTGRES_PASSWORD=coding
+      - POSTGRES_DB=ufo
+    build: ./db_scripts/
+    container_name: db_container
+    expose:
+      - 5432
+    ports:
+      - "50000:5432"
+    healthcheck:
+      test: psql -h localhost -p 5432 -U $$POSTGRES_USER - $$POSTGRES_PASSWORD -d $$POSTGRES_DB -c 'select version();'
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 10s

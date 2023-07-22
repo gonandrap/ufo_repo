@@ -27,6 +27,7 @@ DB_NAME=ufo</Environment>
     <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="docker-compose.yml" />
     <Content Include="requirements.txt" />
     <Content Include="scraper\requirements.txt" />
     <Content Include="web_app\requirements.txt" />

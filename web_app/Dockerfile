@@ -10,17 +10,7 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 COPY database ./database
 COPY web_app ./web_app
 
-# Set environment variables
-ENV PORT=8000
-ENV HOSTNAME=webservices
-ENV PYTHONPATH=/usr/src/app
-ENV DB_USER=coding
-ENV DB_PASSWORD=coding
-ENV DB_HOSTNAME=localhost
-ENV DB_PORT=50000
-ENV DB_NAME=ufo
-
 EXPOSE 8000
 
 # Running commands for the startup of a container.
-#CMD python web_app/main.py
+CMD python web_app/main.py

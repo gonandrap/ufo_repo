@@ -1,4 +1,4 @@
-# ufo_repo
+# ufo_repo`
 Repo used for the UFO coding challenge
 
 
@@ -64,6 +64,24 @@ order to be able to access the **database** directory, I need to set the context
 ```
 TODO : there is a problem! it is failing to connect to the database because I'm passing **localhost** as server, which is correct for the host machine but not when running dockerized! Need
 to figure out how to obtain the address of the DB server programatically I guess (this all will be resolved when using k8s)
+
+# Docker compose
+When combinining multiple containers, we need to use docker-compose to manage them at the very basic. For learning purposes, before switching to minikube, I'll configure docker-compose.
+To build and run the whole thing, execute :
+```
+    docker-compose up --build
+```
+the option ```build``` is not really needed, but I like to force rebuild the images, just in case.
+
+## Throubleshooting
+* make sure to set the startup dependencies correctly. For example, to start the web_app service, the db service must be up & running (accepting new connections). Check option ```depends_on``` on the compose file
+    * to define when a service is in a healthy state (accepting connections for example), define the property ```healthcheck``` in the dependant service (**db_service** in this case)
+* make sure to have the proper port forwarding on each service. See property ```ports```
+* if you want docker to handle what happends if a containers stop running, use the property ```restart```
+* for the particular case of the *web_app* and it's dependency with the database module, I had to define the build context for docker as the root folder of the repo and manually specify where it is the Dockefile,
+check the property ```dockerfile```
+* instead of defining the env vars on each Dockerfile, I think is a better practice to have them all centralized on the docker-compose, in particular the ones that refer to other services.
+    * Take for example DB_HOSTNAME=db_service -> what it is actually doing is to use the hostname of the service ```db_service``` define in the compose.
 
 
 # Links

@@ -89,6 +89,8 @@ class UFODatabase:
             db_port = int(self.__safe_load('DB_PORT'))
             db_name = self.__safe_load('DB_NAME')
 
+            self.logger.info(f'Found DB connection properties -> [db_user={db_user}] [db_host={db_host}] [db_port={db_port}] [db_name={db_name}]')
+            print(f'Found DB connection properties -> [db_user={db_user}] [db_host={db_host}] [db_port={db_port}] [db_name={db_name}]')
             return f'postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}'
         except ValueError as e:
             raise ValueError(f'Trying to load DB environment variables. \n\tDescription : {repr(e)}')
