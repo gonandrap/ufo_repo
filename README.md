@@ -19,7 +19,6 @@ The downside of this design decision is a coupling between app & data layer.
     * all the entries with an approximated event date (name "*UNSPECIFIED / APPROXIMATE*") will be discarded.
 * 
 
-```
 
 # Web scraper manual run
 From *scrapper* folder execute:
@@ -30,6 +29,26 @@ Alternatively, it can be run by just executing next command (being positioned on
 ```
 python run_crawler.py
 ```
+
+# How to create a build the containers?
+## PostgresDB
+### Create image
+```
+    cd <root_directory>
+    cd db_scripts
+    docker build -t postgres_db_image .
+```
+### Run image
+```
+    docker run --name postgres_db_container -d postgres_db_image
+```
+### Confirm DB is running
+```
+    docker exec -it postgres_db_container bash
+    psql postgres://coding:coding@localhost:5432/ufo
+    \dt
+```
+
 
 
 # Links
