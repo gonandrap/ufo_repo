@@ -82,7 +82,8 @@ the option ```build``` is not really needed, but I like to force rebuild the ima
 check the property ```dockerfile```
 * instead of defining the env vars on each Dockerfile, I think is a better practice to have them all centralized on the docker-compose, in particular the ones that refer to other services.
     * Take for example DB_HOSTNAME=db_service -> what it is actually doing is to use the hostname of the service ```db_service``` define in the compose.
-
+* if you try to use env vars on a healthcheck test, make sure to specify **$$** since otherwise docker will try to parse it and don't recognize it as env var.
+    * also, the CMD option doesn't work with env vars (at least for me), is better to use the CMD-SHELL option.
 
 # Links
 * Run scrapy in a container : [link](https://shinesolutions.com/2018/09/13/running-a-web-crawler-in-a-docker-container/)
