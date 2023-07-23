@@ -5,18 +5,18 @@ WORKDIR /usr/src/app
 COPY requirements.txt ./
 RUN pip3 install --no-cache-dir -r requirements.txt
 
-# FIXME : do I want to copy all I have?
-COPY . .
+COPY database ./database
+COPY scraper .
 
 # Updating the packages and installing cron and vim editor if you later want to edit your script from inside your container.
 RUN apt-get update && apt-get install cron -y && apt-get install vim -y && apt-get install -y dos2unix
 
 # Crontab file copied to cron.d directory. Pay attention to line ending
-COPY ./cron_files/cronjob /etc/cron.d/container_cronjob
+COPY ./scraper/cron_files/cronjob /etc/cron.d/container_cronjob
 RUN dos2unix /etc/cron.d/container_cronjob
 
 # Script file copied into container. Pay attention to line ending
-COPY ./cron_files/script.sh /script.sh
+COPY ./scraper/cron_files/script.sh /script.sh
 RUN dos2unix /script.sh
 
 # Make sure line ending is correct

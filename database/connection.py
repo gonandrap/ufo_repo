@@ -103,7 +103,7 @@ class UFODatabase:
     def __safe_load(self, key):
         value = os.getenv(key)
         if value is None:
-            raise DBConnectionException(f'Missing en variable [{key}], cant connect to db. Stopping.')
+            raise DBConnectionException(f'Missing env variable [{key}], cant connect to db. Stopping.')
         else:
             return value
 

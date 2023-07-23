@@ -39,6 +39,10 @@ class ObservationsSpider(scrapy.Spider):
         :param table_name: name of the dynamo table to write results of the run
     """
     name = 'observations'
+    custom_settings = {
+        "LOG_LEVEL": os.environ.setdefault('LOG_LEVEL', 'INFO'),
+    }
+
     timeout = 3
 
     csvfilename = None
@@ -62,12 +66,15 @@ class ObservationsSpider(scrapy.Spider):
         self.__init_logger()
         self.__init_csv_writer()
 
-        self.aws_session = boto3.Session(profile_name='coding_challenge_api_access')
+        #self.aws_session = boto3.Session(profile_name='coding_challenge_api_access')
+
+        self.spider_logger.info(f'Configuring scraper to download observations from date [{self.date_from}]')
 
     def __init_signals(self):
         self.errors = []
-        crawler.signals.connect(self.__item_error, signal=signals.item_error)
-        crawler.signals.connect(self.__spider_error, signal=signals.spider_error)
+        # FIXME: do I need them? where is "crawler"?
+        #crawler.signals.connect(self.__item_error, signal=signals.item_error)
+        #crawler.signals.connect(self.__spider_error, signal=signals.spider_error)
 
     def __item_error(self, item, response, spider, failure):
         self.errors.append(failure)
@@ -200,7 +207,7 @@ class ObservationsSpider(scrapy.Spider):
 
             self.persisted_items += 1
 
-
+    # NOT BEING USED FOR THE MOMENT
     def __upload_file(self, filename):        
         try:
             s3_client = self.aws_session.client('s3')
@@ -219,6 +226,7 @@ class ObservationsSpider(scrapy.Spider):
 
         return False
 
+    # NOT BEING USED FOR THE MOMENT
     def __log_run_result(self, filename, result):
         """
             Not thread safe.

@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scrapper-deployment
+  labels:
+    app: scrapper
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scrapper
+  template:
+    metadata:
+      labels:
+        app: scrapper
+    spec:
+      containers:
+      - name: scrapper-container
+        image: webapp-container
+        imagePullPolicy: Never
+        env:
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: POSTGRES_USER
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: POSTGRES_PASSWORD
+        - name: DB_HOSTNAME
+          valueFrom:
+            configMapKeyRef:
+              name: postgres-config
+              key: DB_HOSTNAME
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: postgres-config
+              key: DB_NAME
+        - name: DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: postgres-config
+              key: DB_PORT          
+        - name: PORT
+          value: "8000"
+        - name: PYTHONPATH
+          value: /usr/src/app
+        - name: LOG_LEVEL
+          value: INFO
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: webapp-service
+spec:
+  type: NodePort
+  selector:
+    app: webapp
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+      nodePort: 30100

@@ -27,6 +27,11 @@ DB_NAME=ufo</Environment>
     <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="cluster_definition\postgres.yaml" />
+    <Content Include="cluster_definition\postgres_config.yaml" />
+    <Content Include="cluster_definition\postgres_secret.yaml" />
+    <Content Include="cluster_definition\scraper.yaml" />
+    <Content Include="cluster_definition\web_app.yaml" />
     <Content Include="docker-compose.yml" />
     <Content Include="requirements.txt" />
     <Content Include="scraper\requirements.txt" />
@@ -56,6 +61,7 @@ DB_NAME=ufo</Environment>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="database" />
+    <Folder Include="cluster_definition\" />
     <Folder Include="scraper" />
     <Folder Include="scraper\scraper_project" />
     <Folder Include="scraper\scraper_project\spiders" />

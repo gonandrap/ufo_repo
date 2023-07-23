@@ -55,7 +55,7 @@ Don't forget to do the port mapping (```-p``` option) to have the external conta
     cd <root_directory>
     docker build -t web_app_image -f web_app/Dockerfile .
 ```
-Note that I'm using as build context the root directory of the repo (referred by ```.```). The reason for that is that ```docker build``` only accept manipulate files and directories within the build context, so in 
+`Note that I'm using as build context the root directory of the repo (referred by ```.```). The reason for that is that ```docker build``` only accept manipulate files and directories within the build context, so in 
 order to be able to access the **database** directory, I need to set the context to a parent level that can access both, the **database** and the **web_app** dirs.
 
 ### Run image
@@ -65,6 +65,30 @@ order to be able to access the **database** directory, I need to set the context
 TODO : there is a problem! it is failing to connect to the database because I'm passing **localhost** as server, which is correct for the host machine but not when running dockerized! Need
 to figure out how to obtain the address of the DB server programatically I guess (this all will be resolved when using k8s)
 
+## Scraper cron
+### Create image
+```
+    cd <root_directory>
+    docker build -t scraper_cron_image -f scraper/Dockerfile .
+```
+The cron has the same dependency with the database module than the weba_app, that's why the build context has to be the root directory of the repo and make a reference to the Dockerfile inside of the scraper folder
+
+### Run image
+```
+    docker run --name scraper_cron_container -d scraper_cron_image
+```
+For the moment, all the AWS functionality (S3 upload of csv and dynamo new entry with result of the run) is disabled until I figure out how to handle to auto-refresh of the sso_token
+If you are planning to test running this image individually (without docker-compose), certain env vars needs to be passed when triggering the run
+```
+    docker run -e "DB_USER=coding" -e "LOG_LEVEL=INFO" -e "DB_PASSWORD=coding" -e "DB_HOSTNAME=db_service" -e "DB_PORT=5432" -e "DB_NAME=ufo" --name scraper_cron_container -d scraper_cron_image
+```
+There is a caveat with this container, because the env vars of the cron are not the same than the python script being called by the cron. To make sure that the vars are passed by the cron to the
+script, in the initialization of the cron (file **cron_files/script.sh**) make sure to dump the current env vars to a location where the cron will pass them along. To do that, include next line to the script:
+```
+    printenv > /etc/environment
+```
+More details here : [link](https://stackoverflow.com/questions/65884276/missing-environment-variables-on-running-python-cronjob-in-docker)
+
 # Docker compose
 When combinining multiple containers, we need to use docker-compose to manage them at the very basic. For learning purposes, before switching to minikube, I'll configure docker-compose.
 To build and run the whole thing, execute :
@@ -73,7 +97,25 @@ To build and run the whole thing, execute :
 ```
 the option ```build``` is not really needed, but I like to force rebuild the images, just in case.
 
-## Throubleshooting
+# How to evolve this to run in a cluster? (using minikube to run everything local)
+1. firt we need to inject the local images generated with docker into the minikube docker registry. To do that, execute this command (make sure to have minikube running!)minikube:
+```
+    minikube image load <image_name>
+    minikube image ls               # shuold list the image just injected
+```
+An alternative could be to create the image with minikube directly:
+```
+    minikube image build -t <image_name> .
+```
+More details on how to inject the image into the minikube registry here : [link](https://sweetcode.io/how-to-use-local-docker-images-in-kubernetes/)
+
+2. we need to create the deployments+service for the three containers in the cluster:
+* postgres.yaml
+* scraper.yaml
+* web_app.yaml
+3. we need to centralize the configuration properties into a ConfigSet
+
+# Throubleshooting
 * make sure to set the startup dependencies correctly. For example, to start the web_app service, the db service must be up & running (accepting new connections). Check option ```depends_on``` on the compose file
     * to define when a service is in a healthy state (accepting connections for example), define the property ```healthcheck``` in the dependant service (**db_service** in this case)
 * make sure to have the proper port forwarding on each service. See property ```ports```

@@ -28,6 +28,23 @@ services:
         delay: 5s
         max_attempts: 5
         window: 120s
+  scraper_cron:
+    environment:
+      - PYTHONPATH=/usr/src/app
+      - DB_USER=coding
+      - DB_PASSWORD=coding
+      - DB_HOSTNAME=db_service
+      - DB_PORT=5432
+      - DB_NAME=ufo
+      - LOG_LEVEL=INFO
+    build:
+      context: .
+      dockerfile: ./scraper/Dockerfile
+    container_name: scraper_cron_container
+    depends_on:
+      db_service:
+        condition: service_healthy
+        restart: true
   db_service:
     environment:
       - POSTGRES_USER=coding  

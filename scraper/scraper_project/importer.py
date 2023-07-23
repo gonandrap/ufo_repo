@@ -16,7 +16,7 @@ class DBImporter:
         self.logger = logging.getLogger('db_importer')
 
     def run(self, filename, index_col):
-        df = pd.read_csv(filename, index_col=index_col, encoding='cp1252')
+        df = pd.read_csv(filename, index_col=index_col, encoding='utf_8')           # see encoding options here : https://docs.python.org/3/library/codecs.html#standard-encodings
         df_ufo_observation = df.iloc[:, 0:7]
         df_ufo_description = df.iloc[:, 7:]
 
